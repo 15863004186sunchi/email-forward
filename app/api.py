@@ -62,13 +62,16 @@ def assign():
 
     db = Session()
     try:
-        if db.query(EmailRoute).filter_by(local_part=local_part).first():
-            return jsonify({"success": False, "error": "该邮箱已被占用"})
-        db.add(EmailRoute(
-            local_part=local_part,
-            order_id=order_id,
-            buyer_name=buyer_name,
-        ))
+        route = db.query(EmailRoute).filter_by(local_part=local_part).first()
+        if not route:
+             # 如果不存在，尝试新增一个
+             db.add(EmailRoute(local_part=local_part, order_id=order_id, buyer_name=buyer_name))
+        else:
+            if route.order_id:
+                return jsonify({"success": False, "error": "该邮箱已被占用"})
+            route.order_id = order_id
+            route.buyer_name = buyer_name
+            
         db.commit()
         return jsonify({"success": True, "email": f"{local_part}@{MY_DOMAIN}"})
     finally:
@@ -78,12 +81,17 @@ def assign():
 @app.route("/api/email/release", methods=["POST"])
 @require_api_key
 def release():
-    """释放邮箱（订单到期/退款）"""
+    """将邮箱回归空闲池（重置订单信息）"""
     local_part = (request.json or {}).get("local_part", "").strip().lower()
     db = Session()
     try:
-        db.query(EmailRoute).filter_by(local_part=local_part).delete()
-        db.commit()
+        route = db.query(EmailRoute).filter_by(local_part=local_part).first()
+        if route:
+            route.order_id = None
+            route.forward_to = None
+            route.buyer_name = None
+            route.active = False
+            db.commit()
         return jsonify({"success": True})
     finally:
         db.close()
@@ -92,7 +100,7 @@ def release():
 @app.route("/api/email/list", methods=["GET"])
 @require_api_key
 def list_routes():
-    """列出所有路由"""
+    """列出所有路由记录"""
     db = Session()
     try:
         rows = db.query(EmailRoute).all()
@@ -130,6 +138,95 @@ def logs():
                 "time":       r.created_at.isoformat(),
             } for r in rows
         ]})
+    finally:
+        db.close()
+
+
+@app.route("/api/email/batch-assign", methods=["POST"])
+@require_api_key
+def batch_assign():
+    """批量从库存随机分配邮箱（用于手动/测试）"""
+    data       = request.json or {}
+    count      = int(data.get("count", 1))
+    forward_to = (data.get("forward_to") or "").strip()
+    # 如果没传 order_id，生成一个随机测试订单号
+    order_id   = (data.get("order_id") or f"TEST_{uuid.uuid4().hex[:8]}").strip()
+    buyer_name = data.get("buyer_name", "手动分配")
+
+    if not forward_to:
+        return jsonify({"success": False, "error": "转发目标不能为空"})
+
+    db = Session()
+    try:
+        # 寻找空闲邮箱（order_id 为空）
+        free_routes = db.query(EmailRoute).filter_by(order_id=None).limit(count).all()
+        if len(free_routes) < count:
+            return jsonify({"success": False, "error": f"库存中的空闲邮箱不足（剩余 {len(free_routes)} 个）"})
+
+        assigned = []
+        for r in free_routes:
+            r.order_id   = order_id
+            r.forward_to = forward_to
+            r.buyer_name = buyer_name
+            r.active     = True
+            assigned.append(r.local_part)
+        
+        db.commit()
+        return jsonify({"success": True, "count": len(assigned), "emails": assigned, "order_id": order_id})
+    finally:
+        db.close()
+
+
+@app.route("/api/pool/add", methods=["POST"])
+@require_api_key
+def pool_add():
+    """向邮箱池增加前缀（库存管理）"""
+    data  = request.json or {}
+    parts = data.get("local_parts", [])
+    if isinstance(parts, str):
+        # 如果是字符串，按换行符拆分
+        parts = [p.strip() for p in parts.replace("\r", "").split("\n") if p.strip()]
+
+    if not parts:
+        return jsonify({"success": False, "error": "请提供邮箱前缀列表"})
+
+    db = Session()
+    try:
+        added = 0
+        skipped = 0
+        for p in parts:
+            p = p.strip().lower()
+            if not p: continue
+            if db.query(EmailRoute).filter_by(local_part=p).first():
+                skipped += 1
+                continue
+            db.add(EmailRoute(local_part=p))
+            added += 1
+        db.commit()
+        return jsonify({"success": True, "added": added, "skipped": skipped})
+    finally:
+        db.close()
+
+
+@app.route("/api/pool/delete", methods=["POST"])
+@require_api_key
+def pool_delete():
+    """从邮箱池删除前缀（库存管理：只能删除未使用的）"""
+    local_part = (request.json or {}).get("local_part", "").strip().lower()
+    if not local_part:
+        return jsonify({"success": False, "error": "请指定要删除的前缀"})
+
+    db = Session()
+    try:
+        route = db.query(EmailRoute).filter_by(local_part=local_part).first()
+        if not route:
+            return jsonify({"success": False, "error": "前缀不存在"})
+        if route.order_id:
+            return jsonify({"success": False, "error": "该前缀已绑定订单，无法直接删除。请先释放邮箱。"})
+        
+        db.delete(route)
+        db.commit()
+        return jsonify({"success": True})
     finally:
         db.close()
 
@@ -187,7 +284,33 @@ def info():
         db.close()
 
 
-# ── 用户前台页面 ──────────────────────────────────────────────────────────
+# ── 静态页面路由 ──────────────────────────────────────────────────────────
+
+@app.route("/")
+def index():
+    """根路径自动跳转到管理后台"""
+    return redirect("/admin")
+
+
+@app.route("/setup")
+def setup_page():
+    """用户前台设置页"""
+    return render_template_string(USER_PAGE, domain=MY_DOMAIN)
+
+
+@app.route("/admin")
+def admin_page():
+    """管理后台首页"""
+    return render_template_string(ADMIN_PAGE_HTML, domain=MY_DOMAIN)
+
+
+@app.route("/health")
+def health():
+    """健康检查"""
+    return jsonify({"status": "ok", "domain": MY_DOMAIN, "time": datetime.utcnow().isoformat()})
+
+
+# ── 用户前台页面 HTML 模板 ──────────────────────────────────────────────────
 
 USER_PAGE = """
 <!DOCTYPE html>
@@ -283,26 +406,6 @@ USER_PAGE = """
 </html>
 """
 
-@app.route("/")
-def index():
-    return redirect("/admin")
-
-
-@app.route("/setup")
-def setup_page():
-    return render_template_string(USER_PAGE, domain=MY_DOMAIN)
-
-
-@app.route("/admin")
-def admin_page():
-    """管理后台（API Key 由前端 JS 处理）"""
-    return render_template_string(ADMIN_PAGE_HTML, domain=MY_DOMAIN)
-
-
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok", "domain": MY_DOMAIN})
-
 
 # ── Webhook 公共工具 ──────────────────────────────────────────────────────
 
@@ -360,38 +463,34 @@ def process_new_order(order_id, buyer_email, buyer_name=""):
     核心发货逻辑（被各平台 Webhook 统一调用，幂等）
     返回 (success: bool, message: str)
     """
-    # 1. 幂等：检查订单是否已处理
     db = Session()
     try:
+        # 1. 幂等：检查订单是否已处理
         existing = db.query(EmailRoute).filter_by(order_id=order_id).first()
         if existing:
             return True, f"订单已处理: {existing.local_part}@{MY_DOMAIN}"
-    finally:
-        db.close()
 
-    # 2. 取空闲邮箱
-    local_part = get_free_local_part()
-    if not local_part:
-        return False, "邮箱池已耗尽，请联系管理员"
+        # 2. 取空闲邮箱
+        route = db.query(EmailRoute).filter_by(order_id=None).first()
+        if not route:
+            return False, "邮箱池已耗尽，请联系管理员扩容库存"
 
-    # 3. 分配邮箱
-    db = Session()
-    try:
-        route = db.query(EmailRoute).filter_by(local_part=local_part).first()
+        # 3. 分配邮箱
         route.order_id   = order_id
         route.buyer_name = buyer_name
         route.active     = False
+        local_part = route.local_part
         db.commit()
+
+        # 4. 发送设置邮件
+        try:
+            send_setup_email(buyer_email, local_part, order_id, buyer_name)
+        except Exception as e:
+            app.logger.error(f"发送设置邮件失败: {e}")
+
+        return True, f"发货成功: {local_part}@{MY_DOMAIN} → {buyer_email}"
     finally:
         db.close()
-
-    # 4. 发送设置邮件（失败不影响分配，管理员可手动重发）
-    try:
-        send_setup_email(buyer_email, local_part, order_id, buyer_name)
-    except Exception as e:
-        app.logger.error(f"发送设置邮件失败: {e}")
-
-    return True, f"发货成功: {local_part}@{MY_DOMAIN} → {buyer_email}"
 
 
 # ── 重发设置邮件接口 ─────────────────────────────────────────────────────
@@ -411,7 +510,7 @@ def resend_setup():
     try:
         route = db.query(EmailRoute).filter_by(local_part=local_part).first()
         if not route or not route.order_id:
-            return jsonify({"success": False, "error": "邮箱未分配"})
+            return jsonify({"success": False, "error": "邮箱未分配或订单不存在"})
         try:
             send_setup_email(to_email, local_part, route.order_id, route.buyer_name or "")
             return jsonify({"success": True})

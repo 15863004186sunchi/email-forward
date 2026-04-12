@@ -97,7 +97,6 @@ td{padding:12px 14px;border-bottom:1px solid var(--gray-100);
    color:var(--gray-700)}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--gray-50)}
-.expand-row td{background:#FEF2F2;font-size:13px;color:var(--danger);padding:8px 14px}
 
 /* ── 徽标 ───────────────────────────────────────────────── */
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;
@@ -138,7 +137,6 @@ input:checked + .slider:before{transform:translateX(16px)}
 
 /* ── 空状态 ─────────────────────────────────────────────── */
 .empty{text-align:center;padding:48px 24px;color:var(--gray-500)}
-.empty svg{margin-bottom:12px;opacity:.4}
 
 /* ── 登录 overlay ───────────────────────────────────────── */
 .login-overlay{position:fixed;inset:0;background:rgba(15,23,42,.85);
@@ -170,19 +168,20 @@ input:checked + .slider:before{transform:translateX(16px)}
 <!-- ── 导航栏 ─────────────────────────────────────────────── -->
 <nav class="navbar">
   <div class="navbar-brand"><span>📬</span>邮件转发管理后台</div>
-  <button class="nav-tab active" onclick="switchTab('routes',this)">邮箱路由</button>
-  <button class="nav-tab" onclick="switchTab('logs',this)">转发日志</button>
-  <button class="nav-btn" onclick="logout()">退出</button>
+  <button class="nav-tab active" id="tab-routes-btn" onclick="switchTab('routes',this)">邮箱路由</button>
+  <button class="nav-tab" id="tab-inventory-btn" onclick="switchTab('inventory',this)">邮箱库存</button>
+  <button class="nav-tab" id="tab-logs-btn" onclick="switchTab('logs',this)">转发日志</button>
+  <button class="nav-btn" onclick="logout()">退出账户</button>
 </nav>
 
 <div class="main">
 
   <!-- ── 统计卡片 ─────────────────────────────────────────── -->
   <div class="stat-row">
-    <div class="stat-card blue"><div class="stat-value" id="s-total">—</div><div class="stat-label">总邮箱数</div></div>
-    <div class="stat-card green"><div class="stat-value" id="s-active">—</div><div class="stat-label">已激活</div></div>
-    <div class="stat-card yellow"><div class="stat-value" id="s-pending">—</div><div class="stat-label">待设置</div></div>
-    <div class="stat-card"><div class="stat-value" id="s-free">—</div><div class="stat-label">空闲</div></div>
+    <div class="stat-card blue"><div class="stat-value" id="s-total">—</div><div class="stat-label">库存在线</div></div>
+    <div class="stat-card green"><div class="stat-value" id="s-active">—</div><div class="stat-label">已激活路由</div></div>
+    <div class="stat-card yellow"><div class="stat-value" id="s-pending">—</div><div class="stat-label">待设置路由</div></div>
+    <div class="stat-card"><div class="stat-value" id="s-free">—</div><div class="stat-label">待售空闲</div></div>
     <div class="stat-card green"><div class="stat-value" id="s-today-ok">—</div><div class="stat-label">今日转发成功</div></div>
     <div class="stat-card red"><div class="stat-value" id="s-today-fail">—</div><div class="stat-label">今日转发失败</div></div>
   </div>
@@ -190,22 +189,21 @@ input:checked + .slider:before{transform:translateX(16px)}
   <!-- ── 邮箱路由面板 ────────────────────────────────────── -->
   <div class="panel active" id="panel-routes">
     <div class="panel-header">
-      <span class="panel-title">邮箱路由</span>
+      <span class="panel-title">路由记录</span>
       <input type="text" class="toolbar-search" id="routeSearch" placeholder="搜索邮箱/订单/买家..." oninput="renderRoutes()">
       <select class="toolbar-select" id="routeStatus" onchange="renderRoutes()">
-        <option value="all">全部状态</option>
+        <option value="all">显示全部</option>
         <option value="active">已激活</option>
         <option value="pending">待设置</option>
-        <option value="free">空闲</option>
       </select>
-      <button class="btn btn-primary" onclick="openAssignModal()">+ 分配邮箱</button>
+      <button class="btn btn-primary" onclick="openBatchAssignModal()">批量分配测试邮箱</button>
       <button class="btn btn-ghost" onclick="loadAll()">↻ 刷新</button>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>邮箱地址</th><th>转发目标</th><th>买家 / 订单</th>
+            <th>邮箱地址</th><th>转发目标</th><th>买家/订单</th>
             <th>状态</th><th>设置链接</th><th>操作</th>
           </tr>
         </thead>
@@ -214,28 +212,42 @@ input:checked + .slider:before{transform:translateX(16px)}
     </div>
   </div>
 
-  <!-- ── 转发日志面板 ────────────────────────────────────── -->
-  <div class="panel" id="panel-logs">
+  <!-- ── 邮箱库存面板 ────────────────────────────────────── -->
+  <div class="panel" id="panel-inventory">
     <div class="panel-header">
-      <span class="panel-title">转发日志（最近 200 条）</span>
-      <input type="text" class="toolbar-search" id="logSearch" placeholder="搜索邮箱/发件人..." oninput="renderLogs()">
-      <select class="toolbar-select" id="logStatus" onchange="renderLogs()">
-        <option value="all">全部</option>
-        <option value="success">成功</option>
-        <option value="failed">失败</option>
-        <option value="no_route">无路由</option>
-      </select>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-500)">
-        自动刷新
-        <label class="switch"><input type="checkbox" id="autoRefresh" onchange="toggleAuto()"><span class="slider"></span></label>
-      </label>
+      <span class="panel-title">库存管理</span>
+      <input type="text" class="toolbar-search" id="invSearch" placeholder="搜索前缀..." oninput="renderInventory()">
+      <button class="btn btn-primary" onclick="openAddPoolModal()">+ 增加库存</button>
       <button class="btn btn-ghost" onclick="loadAll()">↻ 刷新</button>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>时间</th><th>收件邮箱</th><th>发件人</th><th>主题</th><th>状态</th><th>备注</th>
+            <th>前缀(ID)</th><th>完整地址</th><th>当前状态</th><th>对应订单</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="invTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 转发日志面板 ────────────────────────────────────── -->
+  <div class="panel" id="panel-logs">
+    <div class="panel-header">
+      <span class="panel-title">实时转发日志</span>
+      <input type="text" class="toolbar-search" id="logSearch" placeholder="搜索关键字..." oninput="renderLogs()">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-500)">
+        自动刷新
+        <label class="switch"><input type="checkbox" id="autoRefresh" onchange="toggleAuto()"><span class="slider"></span></label>
+      </label>
+      <button class="btn btn-ghost" onclick="loadAll()">↻ 刷新内容</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>时间</th><th>收件人</th><th>原始发信方</th><th>主题内容</th><th>转发状态</th><th>备注</th>
           </tr>
         </thead>
         <tbody id="logsTbody"></tbody>
@@ -245,46 +257,62 @@ input:checked + .slider:before{transform:translateX(16px)}
 
 </div>
 
-<!-- ── 分配邮箱 Modal ──────────────────────────────────────── -->
-<div class="modal-overlay" id="assignModal">
+<!-- ── 批量分配 Modal ──────────────────────────────────────── -->
+<div class="modal-overlay" id="batchAssignModal">
   <div class="modal">
-    <div class="modal-title">分配邮箱<button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-title">批量分配随机库存<button class="modal-close" onclick="closeModals()">✕</button></div>
+    <p style="font-size:12px;color:var(--gray-500);margin-bottom:16px">系统将从剩余空闲邮箱中随机抽取指定数量并分配。</p>
     <div class="form-group">
-      <label class="form-label">邮箱前缀 <span style="color:var(--danger)">*</span></label>
-      <input type="text" class="form-input" id="m-local" placeholder="如 shop001">
+      <label class="form-label">分配数量 (1-50)</label>
+      <input type="number" class="form-input" id="ba-count" value="1" min="1" max="50">
     </div>
     <div class="form-group">
-      <label class="form-label">订单 ID <span style="color:var(--danger)">*</span></label>
-      <input type="text" class="form-input" id="m-order" placeholder="ORDER_001">
+      <label class="form-label">统一转发到 (目标邮箱)</label>
+      <input type="email" class="form-input" id="ba-target" placeholder="example@qq.com">
     </div>
     <div class="form-group">
-      <label class="form-label">买家名称</label>
-      <input type="text" class="form-input" id="m-name" placeholder="张三（可选）">
+      <label class="form-label">备注名称 (可选)</label>
+      <input type="text" class="form-input" id="ba-name" placeholder="批量测试分配">
     </div>
-    <div id="m-error" style="color:var(--danger);font-size:13px;margin-top:4px;display:none"></div>
+    <div id="ba-error" style="color:var(--danger);font-size:13px;margin-top:4px;display:none"></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
-      <button class="btn btn-primary" id="m-submit" onclick="doAssign()">确认分配</button>
+      <button class="btn btn-ghost" onclick="closeModals()">取消</button>
+      <button class="btn btn-primary" id="ba-submit" onclick="doBatchAssign()">开始分配</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 录入库存 Modal ──────────────────────────────────────── -->
+<div class="modal-overlay" id="addPoolModal">
+  <div class="modal">
+    <div class="modal-title">增加邮箱库存<button class="modal-close" onclick="closeModals()">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">输入前缀 (每行一个)</label>
+      <textarea class="form-input" id="ap-list" rows="8" placeholder="mail1001\nmail1002\n..."></textarea>
+    </div>
+    <p style="font-size:12px;color:var(--gray-500)">重复录入的前缀将被自动过滤。</p>
+    <div id="ap-error" style="color:var(--danger);font-size:13px;margin-top:4px;display:none"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModals()">取消</button>
+      <button class="btn btn-primary" id="ap-submit" onclick="doAddPool()">确认录入</button>
     </div>
   </div>
 </div>
 
 <script>
-// ── 状态 ─────────────────────────────────────────────────
+// ── 核心状态 ─────────────────────────────────────────────
 const state = {
   apiKey: localStorage.getItem('admin_api_key') || '',
   routes: [],
   logs: [],
   autoTimer: null,
   domain: '{{ domain }}',
-  vpsHost: location.host,
 };
 
-// ── 登录 ─────────────────────────────────────────────────
+// ── 鉴权逻辑 ─────────────────────────────────────────────
 async function doLogin() {
   const key = document.getElementById('loginInput').value.trim();
   if (!key) return;
-  // 验证：尝试调用 list 接口
   const res = await fetch('/api/email/list', { headers: {'X-API-Key': key} });
   if (res.ok) {
     state.apiKey = key;
@@ -300,7 +328,7 @@ function logout() {
   location.reload();
 }
 
-// ── API ──────────────────────────────────────────────────
+// ── 数据交互 ─────────────────────────────────────────────
 const API = {
   async get(path) {
     const r = await fetch(path, { headers: {'X-API-Key': state.apiKey} });
@@ -317,6 +345,7 @@ const API = {
 };
 
 async function loadAll() {
+  if (!state.apiKey) return;
   const [rd, ld] = await Promise.all([
     API.get('/api/email/list'),
     API.get('/api/email/logs'),
@@ -325,10 +354,11 @@ async function loadAll() {
   state.logs   = ld.logs || [];
   renderStats();
   renderRoutes();
+  renderInventory();
   renderLogs();
 }
 
-// ── Tab 切换 ─────────────────────────────────────────────
+// ── UI 渲染逻辑 ──────────────────────────────────────────
 function switchTab(tab, el) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
@@ -336,180 +366,145 @@ function switchTab(tab, el) {
   document.getElementById('panel-' + tab).classList.add('active');
 }
 
-// ── 统计 ─────────────────────────────────────────────────
 function renderStats() {
   const r = state.routes;
-  const total   = r.length;
-  const active  = r.filter(x => x.active).length;
+  const total = r.length;
+  const active = r.filter(x => x.active).length;
   const pending = r.filter(x => !x.active && x.order_id).length;
-  const free    = r.filter(x => !x.order_id).length;
+  const free = r.filter(x => !x.order_id).length;
 
   const today = new Date().toDateString();
   const todayLogs = state.logs.filter(l => new Date(l.time).toDateString() === today);
-  const ok   = todayLogs.filter(l => l.status === 'success').length;
+  const ok = todayLogs.filter(l => l.status === 'success').length;
   const fail = todayLogs.filter(l => l.status === 'failed').length;
 
-  set('s-total', total);
-  set('s-active', active);
-  set('s-pending', pending);
-  set('s-free', free);
-  set('s-today-ok', ok);
-  set('s-today-fail', fail);
+  set('s-total', total); set('s-active', active); set('s-pending', pending);
+  set('s-free', free); set('s-today-ok', ok); set('s-today-fail', fail);
 }
 function set(id, v) { document.getElementById(id).textContent = v; }
 
-// ── 邮箱路由表格 ─────────────────────────────────────────
-function routeStatus(r) {
-  if (r.active)                     return ['badge-green', '✅ 已激活'];
-  if (!r.active && r.order_id)      return ['badge-yellow', '⏳ 待设置'];
-  return ['badge-gray', '⬜ 空闲'];
-}
-
 function renderRoutes() {
-  const kw   = (document.getElementById('routeSearch').value || '').toLowerCase();
-  const sf   = document.getElementById('routeStatus').value;
-  let rows   = state.routes;
+  const kw = (document.getElementById('routeSearch').value || '').toLowerCase();
+  const sf = document.getElementById('routeStatus').value;
+  let rows = state.routes.filter(r => r.order_id); // 路由页只显示已分配的
 
   if (kw) rows = rows.filter(r =>
     r.local_part.includes(kw) || (r.order_id||'').toLowerCase().includes(kw) ||
     (r.buyer_name||'').toLowerCase().includes(kw) || (r.forward_to||'').toLowerCase().includes(kw)
   );
-  if (sf === 'active')  rows = rows.filter(r => r.active);
-  if (sf === 'pending') rows = rows.filter(r => !r.active && r.order_id);
-  if (sf === 'free')    rows = rows.filter(r => !r.order_id);
+  if (sf === 'active') rows = rows.filter(r => r.active);
+  if (sf === 'pending') rows = rows.filter(r => !r.active);
 
   const tbody = document.getElementById('routesTbody');
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty">暂无数据</div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const [cls, label] = routeStatus(r);
-    const setupLink = r.order_id
-      ? `<a href="/setup?e=${r.local_part}&o=${r.order_id}" target="_blank"
-            style="font-size:12px;color:var(--primary)">打开 →</a>`
-      : '—';
-    const opBtn = r.order_id
-      ? `<button class="btn btn-danger" onclick="doRelease('${r.local_part}')">释放</button>`
-      : '—';
-    return `<tr>
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6"><div class="empty">暂无相关路由记录</div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
       <td><b>${r.local_part}</b>@${state.domain}</td>
-      <td>${r.forward_to || '<span style="color:var(--gray-500)">未设置</span>'}</td>
-      <td>${r.buyer_name||'未分配'} / <span style="color:var(--gray-500)">${r.order_id||'—'}</span></td>
-      <td><span class="badge ${cls}">${label}</span></td>
-      <td>${setupLink}</td>
-      <td>${opBtn}</td>
-    </tr>`;
-  }).join('');
+      <td>${r.forward_to || '<span style="color:var(--gray-500)">尚未设置</span>'}</td>
+      <td>${r.buyer_name || '—'} / <span style="font-size:12px;color:var(--gray-500)">${r.order_id}</span></td>
+      <td><span class="badge ${r.active?'badge-green':'badge-yellow'}">${r.active?'✅ 已激活':'⏳ 待设置'}</span></td>
+      <td><a href="/setup?e=${r.local_part}&o=${r.order_id}" target="_blank" style="color:var(--primary);font-size:12px">打开设置页</a></td>
+      <td><button class="btn btn-danger" onclick="doRelease('${r.local_part}')">释放</button></td>
+    </tr>
+  `).join('');
 }
 
-// ── 日志表格 ─────────────────────────────────────────────
-function logBadge(status) {
-  if (status === 'success')  return ['badge-green', '✅ 成功'];
-  if (status === 'failed')   return ['badge-red',   '❌ 失败'];
-  return ['badge-orange', '⚠️ 无路由'];
+function renderInventory() {
+  const kw = (document.getElementById('invSearch').value || '').toLowerCase();
+  let rows = state.routes;
+
+  if (kw) rows = rows.filter(r => r.local_part.includes(kw));
+
+  const tbody = document.getElementById('invTbody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5"><div class="empty">库存为空，请增加前缀</div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><code>${r.local_part}</code></td>
+      <td>${r.local_part}@${state.domain}</td>
+      <td><span class="badge ${r.order_id?'badge-orange':'badge-gray'}">${r.order_id?'已占用':'空闲'}</span></td>
+      <td style="font-size:12px;color:var(--gray-500)">${r.order_id || '—'}</td>
+      <td>${!r.order_id ? `<button class="btn btn-ghost" onclick="doDeletePool('${r.local_part}')" style="color:var(--danger)">删除</button>` : '—'}</td>
+    </tr>
+  `).join('');
 }
 
 function renderLogs() {
   const kw = (document.getElementById('logSearch').value || '').toLowerCase();
-  const sf = document.getElementById('logStatus').value;
   let rows = state.logs;
-
-  if (kw) rows = rows.filter(l =>
-    (l.local_part||'').includes(kw) || (l.from_addr||'').toLowerCase().includes(kw) ||
-    (l.subject||'').toLowerCase().includes(kw)
-  );
-  if (sf !== 'all') rows = rows.filter(l => l.status === sf);
-
+  if (kw) rows = rows.filter(l => (l.local_part||'').includes(kw) || (l.from_addr||'').toLowerCase().includes(kw) || (l.subject||'').toLowerCase().includes(kw));
   const tbody = document.getElementById('logsTbody');
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty">暂无日志</div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map((l, i) => {
-    const [cls, label] = logBadge(l.status);
-    const t = new Date(l.time + 'Z');
-    const timeStr = isNaN(t) ? l.time : t.toLocaleString('zh-CN');
-    const note = l.forward_to ? `→ ${l.forward_to}` : '—';
-    const expandBtn = l.status === 'failed'
-      ? `onclick="toggleExpand(${i}, this)" style="cursor:pointer"` : '';
-    return `<tr ${expandBtn} id="logrow-${i}">
-      <td style="white-space:nowrap;font-size:12px">${timeStr}</td>
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6"><div class="empty">暂无实时日志</div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(l => {
+    const s = l.status === 'success' ? ['badge-green', '成功'] : ['badge-red', '失败'];
+    return `<tr>
+      <td style="font-size:11px;color:var(--gray-500)">${l.time.split('.')[0].replace('T',' ')}</td>
       <td>${l.local_part}@${state.domain}</td>
-      <td style="font-size:13px">${l.from_addr||'—'}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-          title="${(l.subject||'').replace(/"/g,'&quot;')}">${l.subject||'（无主题）'}</td>
-      <td><span class="badge ${cls}">${label}</span></td>
-      <td style="font-size:13px;color:var(--gray-500)">${note}</td>
-    </tr>${l.status === 'failed' ? `
-    <tr class="expand-row" id="logerr-${i}" style="display:none">
-      <td colspan="6">⚠ 错误详情：${l.error||'未知错误'}</td>
-    </tr>` : ''}`;
+      <td style="font-size:12px">${l.from_addr}</td>
+      <td title="${l.subject}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.subject||'—'}</td>
+      <td><span class="badge ${s[0]}">${s[1]}</span></td>
+      <td style="font-size:12px;color:var(--gray-500)">${l.forward_to?'→ '+l.forward_to : (l.error||'')}</td>
+    </tr>`;
   }).join('');
 }
 
-function toggleExpand(i, el) {
-  const row = document.getElementById('logerr-' + i);
-  if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+// ── 交互操作 ─────────────────────────────────────────────
+function closeModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
 }
 
-// ── 释放邮箱 ─────────────────────────────────────────────
-async function doRelease(localPart) {
-  if (!confirm(`确认释放邮箱 ${localPart}@${state.domain}？\\n\\n释放后该邮箱转发规则将被删除，订单将无法再使用此邮箱。`)) return;
-  const d = await API.post('/api/email/release', {local_part: localPart});
-  if (d.success) { loadAll(); }
-  else { alert('释放失败: ' + (d.error || '未知错误')); }
+async function doRelease(lp) {
+  if (!confirm(`确认重置 ${lp} 到空闲状态？\\n这会清除现有的转发规则和订单绑定。`)) return;
+  const d = await API.post('/api/email/release', {local_part: lp});
+  if (d.success) loadAll(); else alert(d.error);
 }
 
-// ── 分配邮箱 Modal ────────────────────────────────────────
-function openAssignModal() {
-  ['m-local','m-order','m-name'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('m-error').style.display = 'none';
-  document.getElementById('assignModal').classList.add('open');
+// 批量分配
+function openBatchAssignModal() {
+  document.getElementById('ba-error').style.display='none';
+  document.getElementById('batchAssignModal').classList.add('open');
 }
-function closeModal() {
-  document.getElementById('assignModal').classList.remove('open');
-}
-async function doAssign() {
-  const local = document.getElementById('m-local').value.trim();
-  const order = document.getElementById('m-order').value.trim();
-  const name  = document.getElementById('m-name').value.trim();
-  const errEl = document.getElementById('m-error');
-
-  if (!local || !order) {
-    errEl.textContent = '邮箱前缀和订单 ID 为必填项';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  const btn = document.getElementById('m-submit');
+async function doBatchAssign() {
+  const count = document.getElementById('ba-count').value;
+  const target = document.getElementById('ba-target').value.trim();
+  const name = document.getElementById('ba-name').value.trim();
+  if(!target) { alert('请输入目标邮箱'); return; }
+  const btn = document.getElementById('ba-submit');
   btn.disabled = true; btn.textContent = '分配中...';
-  const d = await API.post('/api/email/assign', {
-    local_part: local, order_id: order, buyer_name: name
-  });
-  btn.disabled = false; btn.textContent = '确认分配';
-
-  if (d.success) {
-    closeModal();
-    await loadAll();
-  } else {
-    errEl.textContent = '❌ ' + (d.error || '分配失败');
-    errEl.style.display = 'block';
-  }
+  const d = await API.post('/api/email/batch-assign', {count, forward_to: target, buyer_name: name});
+  btn.disabled = false; btn.textContent = '开始分配';
+  if (d.success) { closeModals(); loadAll(); }
+  else { document.getElementById('ba-error').textContent = '❌ ' + d.error; document.getElementById('ba-error').style.display='block'; }
 }
 
-// ── 自动刷新 ─────────────────────────────────────────────
+// 库存增删
+function openAddPoolModal() {
+  document.getElementById('ap-error').style.display='none';
+  document.getElementById('ap-list').value = '';
+  document.getElementById('addPoolModal').classList.add('open');
+}
+async function doAddPool() {
+  const list = document.getElementById('ap-list').value;
+  if(!list.trim()) return;
+  const btn = document.getElementById('ap-submit');
+  btn.disabled = true; btn.textContent = '录入中...';
+  const d = await API.post('/api/pool/add', {local_parts: list});
+  btn.disabled = false; btn.textContent = '确认录入';
+  if (d.success) { closeModals(); loadAll(); }
+  else { alert(d.error); }
+}
+async function doDeletePool(lp) {
+  if(!confirm(`确认从库存永久删除前缀 ${lp}？`)) return;
+  const d = await API.post('/api/pool/delete', {local_part: lp});
+  if (d.success) loadAll(); else alert(d.error);
+}
+
 function toggleAuto() {
   const on = document.getElementById('autoRefresh').checked;
-  if (on) { state.autoTimer = setInterval(loadAll, 30000); }
-  else    { clearInterval(state.autoTimer); }
+  if(on) state.autoTimer = setInterval(loadAll, 10000);
+  else clearInterval(state.autoTimer);
 }
 
-// ── 初始化 ───────────────────────────────────────────────
-if (state.apiKey) {
-  document.getElementById('loginOverlay').style.display = 'none';
-  loadAll();
-}
+if (state.apiKey) loadAll();
 </script>
 </body>
 </html>"""

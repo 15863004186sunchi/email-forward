@@ -64,7 +64,8 @@ def forward_email(original_msg, to_addr, forward_to, local_part):
     # 构造新邮件，保留原始内容
     fwd = MIMEMultipart("mixed")
     fwd["Subject"]          = f"[转发 {local_part}@{MY_DOMAIN}] {subject}"
-    fwd["From"]             = SMTP_OUT_FROM
+    # 将原始发件人放入显示姓名，满足 Gmail 等中继站的要求，同时让用户看清来源
+    fwd["From"]             = f'"{from_hdr}" <{SMTP_OUT_FROM}>'
     fwd["To"]               = forward_to
     fwd["Reply-To"]         = from_hdr
     fwd["X-Original-To"]    = to_addr
