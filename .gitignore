@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Database
+app/data/
+*.db
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+logs/
+temp/

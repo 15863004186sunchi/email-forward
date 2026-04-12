@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+
+  # ── SMTP 转发服务 ───────────────────────────────────────────────────────
+  smtp:
+    build: ./app
+    container_name: email-smtp
+    restart: always
+    environment:
+      SERVICE:          smtp
+      MY_DOMAIN:        ${MY_DOMAIN}
+      SMTP_OUT_HOST:    ${SMTP_OUT_HOST}
+      SMTP_OUT_PORT:    ${SMTP_OUT_PORT}
+      SMTP_OUT_USER:    ${SMTP_OUT_USER}
+      SMTP_OUT_PASS:    ${SMTP_OUT_PASS}
+      SMTP_OUT_FROM:    ${SMTP_OUT_FROM}
+      SMTP_LISTEN_PORT: 25
+      DATABASE_URL:     sqlite:////app/data/email_routes.db
+    ports:
+      - "25:25"
+    volumes:
+      - db_data:/app/data
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - internal
+
+  # ── 管理 API + 用户前台 ─────────────────────────────────────────────────
+  api:
+    build: ./app
+    container_name: email-api
+    restart: always
+    environment:
+      SERVICE:             api
+      MY_DOMAIN:           ${MY_DOMAIN}
+      API_KEY:             ${API_KEY}
+      VPS_HOST:            ${VPS_HOST}
+      SMTP_OUT_HOST:       ${SMTP_OUT_HOST}
+      SMTP_OUT_PORT:       ${SMTP_OUT_PORT}
+      SMTP_OUT_USER:       ${SMTP_OUT_USER}
+      SMTP_OUT_PASS:       ${SMTP_OUT_PASS}
+      SMTP_OUT_FROM:       ${SMTP_OUT_FROM}
+      WEBHOOK_SECRET_LS:   ${WEBHOOK_SECRET_LS}
+      WEBHOOK_SECRET_WC:   ${WEBHOOK_SECRET_WC}
+      WEBHOOK_SECRET_CYHF: ${WEBHOOK_SECRET_CYHF}
+      DATABASE_URL:        sqlite:////app/data/email_routes.db
+    volumes:
+      - db_data:/app/data
+    networks:
+      - internal
+    depends_on:
+      - smtp
+
+  # ── Nginx 反向代理 ──────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: email-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - internal
+    depends_on:
+      - api
+
+volumes:
+  db_data:
+
+networks:
+  internal:
+    driver: bridge
