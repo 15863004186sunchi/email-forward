@@ -189,7 +189,7 @@ def info():
 
 # ── 用户前台页面 ──────────────────────────────────────────────────────────
 
-USER_PAGE = \"\"\"
+USER_PAGE = """
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -281,7 +281,7 @@ USER_PAGE = \"\"\"
 </script>
 </body>
 </html>
-\"\"\"
+"""
 
 @app.route("/setup")
 def setup_page():
@@ -290,7 +290,7 @@ def setup_page():
 
 @app.route("/admin")
 def admin_page():
-    \"\"\"管理后台（API Key 由前端 JS 处理）\"\"\"
+    """管理后台（API Key 由前端 JS 处理）"""
     return render_template_string(ADMIN_PAGE_HTML, domain=MY_DOMAIN)
 
 
@@ -302,7 +302,7 @@ def health():
 # ── Webhook 公共工具 ──────────────────────────────────────────────────────
 
 def get_free_local_part():
-    \"\"\"从邮箱池取一个空闲 local_part（order_id 为 None）\"\"\"
+    """从邮箱池取一个空闲 local_part（order_id 为 None）"""
     db = Session()
     try:
         route = db.query(EmailRoute).filter_by(order_id=None).first()
@@ -312,7 +312,7 @@ def get_free_local_part():
 
 
 def send_setup_email(to_email, local_part, order_id, buyer_name=""):
-    \"\"\"发送设置链接邮件给用户\"\"\"
+    """发送设置链接邮件给用户"""
     host = VPS_HOST or request.host
     setup_url = f"http://{host}/setup?e={local_part}&o={order_id}"
 
@@ -321,7 +321,7 @@ def send_setup_email(to_email, local_part, order_id, buyer_name=""):
     msg["From"]    = SMTP_OUT_FROM
     msg["To"]      = to_email
 
-    html = f\"\"\"
+    html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px">
       <h2 style="color:#4A7EF5">您的邮件转发服务已开通</h2>
       <p>亲爱的 {buyer_name or '用户'}，感谢您的购买！</p>
@@ -341,7 +341,7 @@ def send_setup_email(to_email, local_part, order_id, buyer_name=""):
         订单号：{order_id}<br>如有问题请回复本邮件
       </p>
     </div>
-    \"\"\"
+    """
     msg.attach(MIMEText(html, "html"))
 
     with smtplib.SMTP(SMTP_OUT_HOST, SMTP_OUT_PORT, timeout=30) as smtp:
@@ -351,10 +351,10 @@ def send_setup_email(to_email, local_part, order_id, buyer_name=""):
 
 
 def process_new_order(order_id, buyer_email, buyer_name=""):
-    \"\"\"
+    """
     核心发货逻辑（被各平台 Webhook 统一调用，幂等）
     返回 (success: bool, message: str)
-    \"\"\"
+    """
     # 1. 幂等：检查订单是否已处理
     db = Session()
     try:
@@ -394,7 +394,7 @@ def process_new_order(order_id, buyer_email, buyer_name=""):
 @app.route("/api/email/resend", methods=["POST"])
 @require_api_key
 def resend_setup():
-    \"\"\"重发设置链接邮件（管理员操作）\"\"\"
+    """重发设置链接邮件（管理员操作）"""
     data       = request.json or {}
     local_part = (data.get("local_part") or "").strip().lower()
     to_email   = (data.get("to_email") or "").strip()
