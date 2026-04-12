@@ -13,7 +13,7 @@ from functools import wraps
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from flask import Flask, request, jsonify, render_template_string, abort
+from flask import Flask, request, jsonify, render_template_string, abort, redirect
 from models import Session, EmailRoute, ForwardLog, init_db
 from admin_page import ADMIN_PAGE_HTML
 
@@ -282,6 +282,11 @@ USER_PAGE = """
 </body>
 </html>
 """
+
+@app.route("/")
+def index():
+    return redirect("/admin")
+
 
 @app.route("/setup")
 def setup_page():
