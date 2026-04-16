@@ -8,7 +8,7 @@
 SMTP_OUT_HOST=smtp.resend.com
 SMTP_OUT_PORT=587
 SMTP_OUT_USER=resend
-SMTP_OUT_PASS=re_R1WNZfLr_8vMxAcRaExtGsGDTCjqAvpsw
+SMTP_OUT_PASS=re_YOUR_RESEND_API_KEY  # 请在此处填入您的 API Key
 SMTP_OUT_FROM=forward@flapysun.com
 ```
 
