@@ -505,7 +505,7 @@ async function doGenerateNames() {
     if (d.success) {
       const area = document.getElementById('ap-list');
       const existing = area.value.trim();
-      area.value = (existing ? existing + '\n' : '') + d.names.join('\n');
+      area.value = (existing ? existing + '\\n' : '') + d.names.join('\\n');
     }
   } catch (e) { alert('生成失败: ' + e); }
   btn.innerHTML = orgText;
