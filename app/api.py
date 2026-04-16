@@ -231,6 +231,37 @@ def pool_delete():
         db.close()
 
 
+@app.route("/api/pool/generate-names", methods=["GET"])
+@require_api_key
+def generate_names():
+    """生成一批看起来像真人的邮箱前缀建议"""
+    import random
+    firsts = ["james", "mary", "robert", "patricia", "john", "jennifer", "michael", "linda", "david", "elizabeth", 
+              "william", "barbara", "richard", "susan", "joseph", "jessica", "thomas", "sarah", "charles", "karen",
+              "stephen", "amy", "kevin", "emily", "brian", "nicole", "george", "clara", "paul", "nancy"]
+    lasts  = ["smith", "johnson", "williams", "brown", "jones", "garcia", "miller", "davis", "rodriguez", "martinez", 
+              "hernandez", "lopez", "gonzalez", "wilson", "anderson", "thomas", "taylor", "moore", "jackson", "martin",
+              "lee", "perez", "thompson", "white", "harris", "sanchez", "clark", "ramirez", "lewis", "robinson"]
+    
+    count = min(int(request.args.get("count", 50)), 200)
+    generated = set()
+    
+    while len(generated) < count:
+        f = random.choice(firsts)
+        l = random.choice(lasts)
+        pattern = random.choice([
+            f"{f}.{l}", 
+            f"{f}_{l}", 
+            f"{f}{l}{random.randint(10, 99)}",
+            f"{f}.{l}{random.randint(1, 9)}",
+            f"{f}{random.randint(1980, 2010)}",
+            f"{l}.{f}"
+        ])
+        generated.add(pattern.lower())
+    
+    return jsonify({"success": True, "names": list(generated)})
+
+
 # ── 用户设置接口（用 order_id 鉴权，无需 API Key）────────────────────────
 
 @app.route("/api/email/set-forward", methods=["POST"])

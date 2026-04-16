@@ -287,8 +287,11 @@ input:checked + .slider:before{transform:translateX(16px)}
   <div class="modal">
     <div class="modal-title">增加邮箱库存<button class="modal-close" onclick="closeModals()">✕</button></div>
     <div class="form-group">
-      <label class="form-label">输入前缀 (每行一个)</label>
-      <textarea class="form-input" id="ap-list" rows="8" placeholder="mail1001\nmail1002\n..."></textarea>
+      <label class="form-label" style="display:flex;justify-content:space-between">
+        输入前缀 (每行一个)
+        <a href="javascript:void(0)" onclick="doGenerateNames()" style="color:var(--primary);font-size:12px;text-decoration:none">✨ 随机生成真人名</a>
+      </label>
+      <textarea class="form-input" id="ap-list" rows="10" placeholder="mail1001\nmail1002\n..."></textarea>
     </div>
     <p style="font-size:12px;color:var(--gray-500)">重复录入的前缀将被自动过滤。</p>
     <div id="ap-error" style="color:var(--danger);font-size:13px;margin-top:4px;display:none"></div>
@@ -492,6 +495,22 @@ async function doAddPool() {
   if (d.success) { closeModals(); loadAll(); }
   else { alert(d.error); }
 }
+
+async function doGenerateNames() {
+  const btn = document.querySelector('[onclick="doGenerateNames()"]');
+  const orgText = btn.innerHTML;
+  btn.innerHTML = '生成中...';
+  try {
+    const d = await API.get('/api/pool/generate-names?count=50');
+    if (d.success) {
+      const area = document.getElementById('ap-list');
+      const existing = area.value.trim();
+      area.value = (existing ? existing + '\n' : '') + d.names.join('\n');
+    }
+  } catch (e) { alert('生成失败: ' + e); }
+  btn.innerHTML = orgText;
+}
+
 async function doDeletePool(lp) {
   if(!confirm(`确认从库存永久删除前缀 ${lp}？`)) return;
   const d = await API.post('/api/pool/delete', {local_part: lp});
